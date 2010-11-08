@@ -1,6 +1,6 @@
 use strict;
 use Config;
-use Test::More tests => 18;
+use Test::More tests => 27;
 use ok 'Devel::Hints', ':all';
 use Carp;
 
