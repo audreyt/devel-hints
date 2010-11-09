@@ -1,6 +1,6 @@
 use strict;
 use Config;
-use Test::More tests => 37;
+use Test::More tests => 38;
 use ok 'Devel::Hints', ':all';
 use Carp;
 
@@ -41,6 +41,8 @@ my ($sub, $line, $warning_bits, $open);
     };
 }
 
+is(cop_label($sub), '', 'cop_label');
+
 is(cop_file($sub), __FILE__, 'cop_file');
 
 is(cop_filegv($sub), \$::{'_<' . __FILE__}, 'cop_filegv');
@@ -71,12 +73,16 @@ SKIP: {
 }
 
 my ($Topic, $TopicRV);
-foreach (qw(file filegv stashpv stash seq arybase line warnings io)) {
+foreach (qw(label file filegv stashpv stash seq arybase line warnings io)) {
     no strict 'refs';
 
     $Topic = "cop_$_";
     $TopicRV = "cop_$_ - return value";
     &$_ if defined &$_;
+}
+
+sub label {
+    ok(!eval { cop_label($sub => $Topic); 1 }, $Topic);
 }
 
 sub file {

@@ -299,6 +299,8 @@ cop_label(code=NULL, value=NULL)
 	SV*		code
 	char*		value
     CODE:
+        if (items >= 2 && SvROK(code))
+            croak("Can't set the label of a coderef");
         CALL_IMPL(label);
     OUTPUT:
 	RETVAL
