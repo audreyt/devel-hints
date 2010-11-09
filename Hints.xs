@@ -7,6 +7,11 @@
 #define CopFILEGV_set(c, gv) ;; /* noop */
 #endif
 
+#define CALL_IMPL(m)                                      \
+    if (GIMME_V == G_VOID)                                \
+        XSRETURN(0);                                      \
+    RETVAL = cop_ ## m(mycop(code), value, items >= 2, 1)
+
 #define APPLY_TO_ALL_FN(m,t) \
     static void cop_ ## m ## _r(OP *op, t value) \
     {                                            \
@@ -52,7 +57,7 @@ COP* mycop(SV* code)
     }
 }
 
-char *cop_label(COP *cop, char *value, int set)
+char *cop_label(COP *cop, char *value, int set, int apply_to_all)
 {
 #ifdef CopLABEL
     return (char *) CopLABEL(cop);
@@ -240,10 +245,7 @@ cop_label(code=NULL, value=NULL)
 	SV*		code
 	char*		value
     CODE:
-        if (GIMME_V == G_VOID)
-            XSRETURN(0);
-
-        RETVAL = cop_label(mycop(code), value, items >= 2);
+        CALL_IMPL(label);
     OUTPUT:
 	RETVAL
 
@@ -252,10 +254,7 @@ cop_stashpv(code=NULL, value=NULL)
 	SV*		code
 	char*		value
     CODE:
-        if (GIMME_V == G_VOID)
-            XSRETURN(0);
-
-        RETVAL = cop_stashpv(mycop(code), value, items >= 2, 1);
+        CALL_IMPL(stashpv);
     OUTPUT:
 	RETVAL
 
@@ -264,10 +263,7 @@ cop_stash(code=NULL, value=NULL)
 	SV*		code
 	HV*		value
     CODE:
-        if (GIMME_V == G_VOID)
-            XSRETURN(0);
-
-        RETVAL = cop_stash(mycop(code), value, items >= 2, 1);
+        CALL_IMPL(stash);
     OUTPUT:
 	RETVAL
 
@@ -276,10 +272,7 @@ cop_file(code=NULL, value=NULL)
 	SV*		code
 	char*		value
     CODE:
-        if (GIMME_V == G_VOID)
-            XSRETURN(0);
-
-        RETVAL = cop_file(mycop(code), value, items >= 2, 1);
+        CALL_IMPL(file);
     OUTPUT:
 	RETVAL
 
@@ -288,10 +281,7 @@ cop_filegv(code=NULL, value=NULL)
 	SV*		code
 	GV*		value
     CODE:
-        if (GIMME_V == G_VOID)
-            XSRETURN(0);
-
-        RETVAL = cop_filegv(mycop(code), value, items >= 2, 1);
+        CALL_IMPL(filegv);
     OUTPUT:
 	RETVAL
 
@@ -300,10 +290,7 @@ cop_seq(code=NULL, value=0)
 	SV*		code
 	UV		value
     CODE:
-        if (GIMME_V == G_VOID)
-            XSRETURN(0);
-
-        RETVAL = cop_seq(mycop(code), value, items >= 2, 1);
+        CALL_IMPL(seq);
     OUTPUT:
 	RETVAL
 
@@ -312,10 +299,7 @@ cop_arybase(code=NULL, value=0)
 	SV*		code
 	I32		value
     CODE:
-        if (GIMME_V == G_VOID)
-            XSRETURN(0);
-
-        RETVAL = cop_arybase(mycop(code), value, items >= 2, 1);
+        CALL_IMPL(arybase);
     OUTPUT:
 	RETVAL
 
@@ -324,10 +308,7 @@ cop_line(code=NULL, value=0)
 	SV*		code
 	U16		value
     CODE:
-        if (GIMME_V == G_VOID)
-            XSRETURN(0);
-
-        RETVAL = cop_line(mycop(code), value, items >= 2, 1);
+        CALL_IMPL(line);
     OUTPUT:
 	RETVAL
 
@@ -336,10 +317,7 @@ cop_warnings(code=NULL, value=NULL)
 	SV*		code
 	SV*		value
     CODE:
-        if (GIMME_V == G_VOID)
-            XSRETURN(0);
-
-        RETVAL = cop_warnings(mycop(code), value, items >= 2, 1);
+        CALL_IMPL(warnings);
     OUTPUT:
 	RETVAL
 
@@ -348,10 +326,7 @@ cop_io(code=NULL, value=NULL)
 	SV*		code
 	SV*		value
     CODE:
-        if (GIMME_V == G_VOID)
-            XSRETURN(0);
-
-        RETVAL = cop_io(mycop(code), value, items >= 2, 1);
+        CALL_IMPL(io);
     OUTPUT:
 	RETVAL
 
