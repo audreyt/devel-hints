@@ -2,8 +2,8 @@ NAME
     Devel::Hints - Access compile-time hints at runtime
 
 VERSION
-    This document describes version 0.20 of Devel::Hints, released November
-    8, 2010.
+    This document describes version 0.21 of Devel::Hints, released November
+    9, 2010.
 
 SYNOPSIS
         use Devel::Hints ':all';
@@ -94,7 +94,7 @@ AUTHORS
 
 CC0 1.0 Universal
     To the extent possible under law, 唐鳳 has waived all copyright and
-    related or neighboring rights to Convert-EastAsianWidth.
+    related or neighboring rights to Devel-Hints.
 
     This work is published from Taiwan.
 

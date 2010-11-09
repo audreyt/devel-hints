@@ -1,5 +1,5 @@
 package Devel::Hints;
-$VERSION = '0.20';
+$VERSION = '0.21';
 
 use strict;
 use vars qw($VERSION @ISA @EXPORT_OK %EXPORT_TAGS);
@@ -36,8 +36,8 @@ Devel::Hints - Access compile-time hints at runtime
 
 =head1 VERSION
 
-This document describes version 0.20 of Devel::Hints, released
-November 8, 2010.
+This document describes version 0.21 of Devel::Hints, released
+November 9, 2010.
 
 =head1 SYNOPSIS
 
@@ -147,7 +147,7 @@ less elegant XS implementation.
 =head1 CC0 1.0 Universal
 
 To the extent possible under law, 唐鳳 has waived all copyright and related
-or neighboring rights to Convert-EastAsianWidth.
+or neighboring rights to Devel-Hints.
 
 This work is published from Taiwan.
 
