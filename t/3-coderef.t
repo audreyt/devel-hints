@@ -1,6 +1,6 @@
 use strict;
 use Config;
-use Test::More tests => 38;
+use Test::More tests => 39;
 use ok 'Devel::Hints', ':all';
 use Carp;
 
@@ -41,7 +41,7 @@ my ($sub, $line, $warning_bits, $open);
     };
 }
 
-is(cop_label($sub), '', 'cop_label');
+is(cop_label($sub), undef, 'cop_label');
 
 is(cop_file($sub), __FILE__, 'cop_file');
 
