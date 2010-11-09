@@ -348,6 +348,10 @@ cop_io(code=NULL, value=NULL)
 	SV*		code
 	SV*		value
     CODE:
+        if (GIMME_V == G_VOID)
+            XSRETURN(0);
+
+        RETVAL = cop_io(mycop(code), value, items >= 2, 1);
     OUTPUT:
 	RETVAL
 
