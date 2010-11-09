@@ -36,6 +36,7 @@ WALK_OPTREE_CB(stashpv, char*)
 WALK_OPTREE_CB(stash, HV*)
 WALK_OPTREE_CB(file, char*)
 WALK_OPTREE_CB(filegv, GV*)
+/* XXX: should cop_seq be incremented, like cop_line is? */
 WALK_OPTREE_CB(seq, UV)
 WALK_OPTREE_CB(arybase, I32)
 WALK_OPTREE_CB(warnings, SV*)
