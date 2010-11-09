@@ -21,7 +21,7 @@ my ($sub, $line, $warning_bits, $open);
         warn 'foo';
         reset 'X';
         my @a = (1..10);
-        sub { 1 }->() && warn 'foo';
+        /blarg/ || warn 'foo';
         if (sub { 1 }->()) {
             warn 'foo';
         }

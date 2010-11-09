@@ -63,36 +63,23 @@ static void _walk_optree(OP *o)
     for (; o; o = o->op_next) {
         if (o->op_opt != initial_state)
             break;
-
         o->op_opt = !initial_state;
+
         walk_optree_r(o);
 
-        switch (o->op_type) {
-        case OP_MAPWHILE:
-        case OP_GREPWHILE:
-        case OP_AND:
-        case OP_OR:
-        case OP_DOR:
-        case OP_ANDASSIGN:
-        case OP_ORASSIGN:
-        case OP_DORASSIGN:
-        case OP_COND_EXPR:
-        case OP_RANGE:
-        case OP_ONCE: {
+        switch (PL_opargs[o->op_type] & OA_CLASS_MASK) {
+        case OA_LOGOP:
             _walk_optree(cLOGOPo->op_other);
             break;
-        }
-        case OP_ENTERLOOP:
-        case OP_ENTERITER: {
+        case OA_LOOP:
             _walk_optree(cLOOPo->op_redoop);
             _walk_optree(cLOOPo->op_nextop);
             _walk_optree(cLOOPo->op_lastop);
             break;
-        }
-        case OP_SUBST: {
-            _walk_optree(cPMOPo->op_pmstashstartu.op_pmreplstart);
+        case OA_PMOP:
+            if (o->op_type == OP_SUBST)
+                _walk_optree(cPMOPo->op_pmstashstartu.op_pmreplstart);
             break;
-        }
         }
     }
 }
