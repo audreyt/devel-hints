@@ -12,26 +12,96 @@
         XSRETURN(0);                                      \
     RETVAL = cop_ ## m(mycop(code), value, items >= 2, 1)
 
-#define APPLY_TO_ALL_FN(m,t) \
-    static void cop_ ## m ## _r(OP *op, t value) \
-    {                                            \
-        do {                                     \
-            if (op->op_type == OP_NEXTSTATE) {   \
-                COP *cop = (COP*)op;             \
-                cop_ ## m(cop, value, 1, 0);     \
-            }                                    \
-        } while (op = op->op_next);              \
+#define WALK_OPTREE_CB(m,t)                    \
+    static t m ## _value;                      \
+    static void cop_ ## m ## _r(OP *op)        \
+    {                                          \
+        if (op->op_type == OP_NEXTSTATE) {     \
+            COP *cop = (COP*)op;               \
+            cop_ ## m(cop, m ## _value, 1, 0); \
+        }                                      \
     }
 
-static void cop_stashpv_r(OP *op, char *value);
-static void cop_stash_r(OP *op, HV *value);
-static void cop_file_r(OP *op, char *value);
-static void cop_filegv_r(OP *op, GV *value);
-static void cop_seq_r(OP *op, UV value);
-static void cop_arybase_r(OP *op, I32 value);
-static void cop_line_r(OP *op, U16 value);
-static void cop_warnings_r(OP *op, SV *value);
-static void cop_io_r(OP *op, SV *value);
+char *cop_stashpv(COP *cop, char *value, int set, int apply_to_all);
+HV *cop_stash(COP *cop, HV *value, int set, int apply_to_all);
+char *cop_file(COP *cop, char *value, int set, int apply_to_all);
+GV *cop_filegv(COP *cop, GV *value, int set, int apply_to_all);
+UV cop_seq(COP *cop, UV value, int set, int apply_to_all);
+I32 cop_arybase(COP *cop, I32 value, int set, int apply_to_all);
+U16 cop_line(COP *cop, U16 value, int set, int apply_to_all);
+SV *cop_warnings(COP *cop, SV *value, int set, int apply_to_all);
+SV *cop_io(COP *cop, SV *value, int set, int apply_to_all);
+
+WALK_OPTREE_CB(stashpv, char*)
+WALK_OPTREE_CB(stash, HV*)
+WALK_OPTREE_CB(file, char*)
+WALK_OPTREE_CB(filegv, GV*)
+WALK_OPTREE_CB(seq, UV)
+WALK_OPTREE_CB(arybase, I32)
+WALK_OPTREE_CB(warnings, SV*)
+WALK_OPTREE_CB(io, SV*)
+
+/* needs some custom behavior */
+static U16 line_value;
+static U16 line_base_value;
+static char *line_base_file;
+static void cop_line_r(OP *op)
+{
+    if (op->op_type == OP_NEXTSTATE &&
+        !strcmp(line_base_file, cop_file((COP*)op, NULL, 0, 0))) {
+        COP *cop = (COP*)op;
+        cop_line(cop, line_value - line_base_value + cop_line(cop, 0, 0, 0),
+                 1, 0);
+    }
+}
+
+static int initial_state;
+static void (*walk_optree_r)(OP*);
+
+static void _walk_optree(OP *o)
+{
+    for (; o; o = o->op_next) {
+        if (o->op_opt != initial_state)
+            break;
+
+        o->op_opt = !initial_state;
+        walk_optree_r(o);
+
+        switch (o->op_type) {
+        case OP_MAPWHILE:
+        case OP_GREPWHILE:
+        case OP_AND:
+        case OP_OR:
+        case OP_DOR:
+        case OP_ANDASSIGN:
+        case OP_ORASSIGN:
+        case OP_DORASSIGN:
+        case OP_COND_EXPR:
+        case OP_RANGE:
+        case OP_ONCE: {
+            _walk_optree(cLOGOPo->op_other);
+            break;
+        }
+        case OP_ENTERLOOP:
+        case OP_ENTERITER: {
+            _walk_optree(cLOOPo->op_redoop);
+            _walk_optree(cLOOPo->op_nextop);
+            _walk_optree(cLOOPo->op_lastop);
+            break;
+        }
+        case OP_SUBST: {
+            _walk_optree(cPMOPo->op_pmstashstartu.op_pmreplstart);
+            break;
+        }
+        }
+    }
+}
+
+void walk_optree(OP *o)
+{
+    initial_state = o->op_opt;
+    _walk_optree(o);
+}
 
 COP* mycop(SV* code)
 {
@@ -73,7 +143,9 @@ char *cop_stashpv(COP *cop, char *value, int set, int apply_to_all)
 {
     if (set) {
         if (apply_to_all) {
-            cop_stashpv_r((OP*)cop, value);
+            stashpv_value = value;
+            walk_optree_r = cop_stashpv_r;
+            walk_optree((OP*)cop);
         }
         else {
             CopSTASHPV_set(cop, value);
@@ -87,7 +159,9 @@ HV *cop_stash(COP *cop, HV *value, int set, int apply_to_all)
 {
     if (set) {
         if (apply_to_all) {
-            cop_stash_r((OP*)cop, value);
+            stash_value = value;
+            walk_optree_r = cop_stash_r;
+            walk_optree((OP*)cop);
         }
         else {
             CopSTASH_set(cop, value);
@@ -102,7 +176,9 @@ char *cop_file(COP *cop, char *value, int set, int apply_to_all)
 
     if (set) {
         if (apply_to_all) {
-            cop_file_r((OP*)cop, value);
+            file_value = value;
+            walk_optree_r = cop_file_r;
+            walk_optree((OP*)cop);
         }
         else {
             CopFILE_set(cop, value);
@@ -116,7 +192,9 @@ GV *cop_filegv(COP *cop, GV *value, int set, int apply_to_all)
 {
     if (set) {
         if (apply_to_all) {
-            cop_filegv_r((OP*)cop, value);
+            filegv_value = value;
+            walk_optree_r = cop_filegv_r;
+            walk_optree((OP*)cop);
         }
         else {
             CopFILEGV_set(cop, value);
@@ -130,7 +208,9 @@ UV cop_seq(COP *cop, UV value, int set, int apply_to_all)
 {
     if (set) {
         if (apply_to_all) {
-            cop_seq_r((OP*)cop, value);
+            seq_value = value;
+            walk_optree_r = cop_seq_r;
+            walk_optree((OP*)cop);
         }
         else {
             cop->cop_seq = value;
@@ -147,7 +227,9 @@ I32 cop_arybase(COP *cop, I32 value, int set, int apply_to_all)
 #else
         if (set) {
             if (apply_to_all) {
-                cop_arybase_r((OP*)cop, value);
+                arybase_value = value;
+                walk_optree_r = cop_arybase_r;
+                walk_optree((OP*)cop);
             }
             else {
                 cop->cop_arybase = value;
@@ -162,7 +244,11 @@ U16 cop_line(COP *cop, U16 value, int set, int apply_to_all)
 {
     if (set) {
         if (apply_to_all) {
-            cop_line_r((OP*)cop, value);
+            line_value = value;
+            line_base_value = cop_line(cop, 0, 0, 0);
+            line_base_file = cop_file(cop, NULL, 0, 0);
+            walk_optree_r = cop_line_r;
+            walk_optree((OP*)cop);
         }
         else {
             cop->cop_line = value;
@@ -179,7 +265,9 @@ SV *cop_warnings(COP *cop, SV *value, int set, int apply_to_all)
 #else
         if (set) {
             if (apply_to_all) {
-                cop_warnings_r((OP*)cop, value);
+                warnings_value = value;
+                walk_optree_r = cop_warnings_r;
+                walk_optree((OP*)cop);
             }
             else {
                 mycop(c)->cop_warnings = newSVsv(value);
@@ -202,7 +290,9 @@ SV *cop_io(COP *cop, SV *value, int set, int apply_to_all)
 #if PERL_REVISION == 5 && (PERL_VERSION >= 7 && PERL_VERSION < 10)
         if (set) {
             if (apply_to_all) {
-                cop_io_r((OP*)cop, value);
+                io_value = value;
+                walk_optree_r = cop_io_r;
+                walk_optree((OP*)cop);
             }
             else {
                 cop->cop_io = newSVsv(value);
@@ -213,29 +303,6 @@ SV *cop_io(COP *cop, SV *value, int set, int apply_to_all)
 #else
 	return &PL_sv_undef;
 #endif
-}
-
-APPLY_TO_ALL_FN(stashpv, char*)
-APPLY_TO_ALL_FN(stash, HV*)
-APPLY_TO_ALL_FN(file, char*)
-APPLY_TO_ALL_FN(filegv, GV*)
-APPLY_TO_ALL_FN(seq, UV)
-APPLY_TO_ALL_FN(arybase, I32)
-APPLY_TO_ALL_FN(warnings, SV*)
-APPLY_TO_ALL_FN(io, SV*)
-
-/* needs some custom behavior */
-static void cop_line_r(OP *op, U16 value)
-{
-    U16 base_value = cop_line((COP*)op, 0, 0, 0);
-    char *base_file = cop_file((COP*)op, NULL, 0, 0);
-    do {
-        if (op->op_type == OP_NEXTSTATE &&
-            !strcmp(base_file, cop_file((COP*)op, NULL, 0, 0))) {
-            COP *cop = (COP*)op;
-            cop_line(cop, value - base_value + cop_line(cop, 0, 0, 0), 1, 0);
-        }
-    } while (op = op->op_next);
 }
 
 MODULE = Devel::Hints	PACKAGE = Devel::Hints

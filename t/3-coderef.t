@@ -1,6 +1,6 @@
 use strict;
 use Config;
-use Test::More tests => 27;
+use Test::More tests => 37;
 use ok 'Devel::Hints', ':all';
 use Carp;
 
@@ -21,7 +21,22 @@ my ($sub, $line, $warning_bits, $open);
         warn 'foo';
         reset 'X';
         my @a = (1..10);
-        warn 'foo';
+        sub { 1 }->() && warn 'foo';
+        if (sub { 1 }->()) {
+            warn 'foo';
+        }
+        else {
+            warn 'bar';
+        }
+        if (sub { 0 }->()) {
+            warn 'bar';
+        }
+        else {
+            warn 'foo';
+        }
+        for (1..3) {
+            warn 'foo';
+        }
         return (bless {}), $a[1], (warnings::enabled('redefine'));
     };
 }
@@ -103,7 +118,8 @@ sub arybase {
 
 sub line {
     my $x = 0;
-    local $SIG{__WARN__} = sub { like($_[0], qr/100$x/, $Topic); $x = 3 };
+    my @lines = qw(1000 1003 1005 1014 1017 1017 1017);
+    local $SIG{__WARN__} = sub { like($_[0], qr/$lines[$x++]/, $Topic) };
     is(cop_line($sub => 1000), 1000, $TopicRV);
     $sub->();
 }
