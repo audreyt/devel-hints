@@ -7,6 +7,7 @@ use Carp;
 my ($sub, $line, $warning_bits, $open);
 {
     package Foo;
+    use warnings;
     no warnings 'deprecated';
     use open IO => ':utf8';
     BEGIN {
