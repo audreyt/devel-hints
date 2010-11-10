@@ -43,7 +43,7 @@
 #endif
 
 #define CALL_IMPL(m)                                      \
-    if (GIMME_V == G_VOID)                                \
+    if (GIMME_V == G_VOID && items < 2)                   \
         XSRETURN(0);                                      \
     RETVAL = cop_ ## m(mycop(code), value, items >= 2, code && SvROK(code))
 
