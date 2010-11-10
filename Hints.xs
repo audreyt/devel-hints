@@ -73,7 +73,6 @@ SV *cop_io(COP *cop, SV *value, int set, int apply_to_all);
 
 WALK_OPTREE_CB(stashpv, char*)
 WALK_OPTREE_CB(stash, HV*)
-WALK_OPTREE_CB(file, char*)
 WALK_OPTREE_CB(filegv, GV*)
 /* XXX: should cop_seq be incremented, like cop_line is? */
 WALK_OPTREE_CB(seq, UV)
@@ -92,6 +91,17 @@ static void cop_line_r(OP *op)
         COP *cop = (COP*)op;
         cop_line(cop, line_value - line_base_value + cop_line(cop, 0, 0, 0),
                  1, 0);
+    }
+}
+
+static char *file_value;
+static char *file_base;
+static void cop_file_r(OP *op)
+{
+    if (op->op_type == OP_NEXTSTATE &&
+        !strcmp(file_base, cop_file((COP*)op, NULL, 0, 0))) {
+        COP *cop = (COP*)op;
+        cop_file(cop, file_value, 1, 0);
     }
 }
 
@@ -187,7 +197,17 @@ HV *cop_stash(COP *cop, HV *value, int set, int apply_to_all)
 
 char *cop_file(COP *cop, char *value, int set, int apply_to_all)
 {
-    SET(file, CopFILE_set(cop, value));
+    if (set) {
+#ifdef DH_ALLOW_SUB_PARAMETERS
+        if (apply_to_all) {
+            file_value = value;
+            file_base = cop_file(cop, NULL, 0, 0);
+            walk_optree((OP*)cop, cop_file_r);
+        }
+        else
+#endif
+            CopFILE_set(cop, value);
+    }
 
     return CopFILE(cop);
 }
