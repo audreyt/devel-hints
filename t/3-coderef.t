@@ -1,8 +1,17 @@
 use strict;
 use Config;
-use Test::More tests => 39;
+use Test::More;
+BEGIN {
+    if ($] < 5.010) {
+        plan skip_all => "modifying coderef hints doesn't work properly on 5.8";
+    }
+    else {
+        plan tests => 39;
+    }
+}
 use ok 'Devel::Hints', ':all';
 use Carp;
+
 
 my ($sub, $line, $warning_bits, $open);
 {

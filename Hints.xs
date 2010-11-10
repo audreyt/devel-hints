@@ -4,6 +4,11 @@
 #include "ppport.h"
 #include "ptable.h"
 
+/* this gets weird segfaults on 5.8, and I have no idea why */
+#if PERL_REVISION == 5 && (PERL_VERSION >= 10)
+#define DH_ALLOW_SUB_PARAMETERS
+#endif
+
 #ifndef CopFILEGV_set
 #define CopFILEGV_set(c, gv) ;; /* noop */
 #endif
@@ -20,10 +25,29 @@
 #define DH_PMOP_STASHSTARTU(o) o->op_pmreplstart
 #endif
 
+#ifdef DH_ALLOW_SUB_PARAMETERS
+#define SET(m,s)                                        \
+    do {                                                \
+        if (set) {                                      \
+            if (apply_to_all) {                         \
+                m ## _value = value;                    \
+                walk_optree((OP*)cop, cop_ ## m ## _r); \
+            }                                           \
+            else {                                      \
+                s;                                      \
+            }                                           \
+        }                                               \
+    } while (0)
+#else
+#define SET(m,s) if (set) s
+#endif
+
 #define CALL_IMPL(m)                                      \
     if (GIMME_V == G_VOID)                                \
         XSRETURN(0);                                      \
     RETVAL = cop_ ## m(mycop(code), value, items >= 2, code && SvROK(code))
+
+#ifdef DH_ALLOW_SUB_PARAMETERS
 
 #define WALK_OPTREE_CB(m,t)                    \
     static t m ## _value;                      \
@@ -105,8 +129,11 @@ void walk_optree(OP *o, walk_optree_cb_t cb)
     ptable_free(visited);
 }
 
+#endif
+
 COP* mycop(SV* code)
 {
+#ifdef DH_ALLOW_SUB_PARAMETERS
     if (code && SvROK(code)) {
         if (SvTYPE(SvRV(code)) == SVt_PVCV) {
             code = SvRV(code);
@@ -117,16 +144,19 @@ COP* mycop(SV* code)
         }
     }
     else {
+#endif
         int count;
 
-        count = code ? SvIV(code) : 0;
+        count = code && SvIOK(code) ? SvIV(code) : 0;
         if (count <= 0) {
             return PL_curcop;
         }
         else {
             return cxstack[cxstack_ix - count + 1].blk_oldcop;
         }
+#ifdef DH_ALLOW_SUB_PARAMETERS
     }
+#endif
 }
 
 char *cop_label(COP *cop, char *value, int set, int apply_to_all)
@@ -143,107 +173,59 @@ char *cop_label(COP *cop, char *value, int set, int apply_to_all)
 
 char *cop_stashpv(COP *cop, char *value, int set, int apply_to_all)
 {
-    if (set) {
-        if (apply_to_all) {
-            stashpv_value = value;
-            walk_optree((OP*)cop, cop_stashpv_r);
-        }
-        else {
-            CopSTASHPV_set(cop, value);
-        }
-    }
+    SET(stashpv, CopSTASHPV_set(cop, value));
 
     return CopSTASHPV(cop);
 }
 
 HV *cop_stash(COP *cop, HV *value, int set, int apply_to_all)
 {
-    if (set) {
-        if (apply_to_all) {
-            stash_value = value;
-            walk_optree((OP*)cop, cop_stash_r);
-        }
-        else {
-            CopSTASH_set(cop, value);
-        }
-    }
+    SET(stash, CopSTASH_set(cop, value));
 
     return CopSTASH(cop);
 }
 
 char *cop_file(COP *cop, char *value, int set, int apply_to_all)
 {
-
-    if (set) {
-        if (apply_to_all) {
-            file_value = value;
-            walk_optree((OP*)cop, cop_file_r);
-        }
-        else {
-            CopFILE_set(cop, value);
-        }
-    }
+    SET(file, CopFILE_set(cop, value));
 
     return CopFILE(cop);
 }
 
 GV *cop_filegv(COP *cop, GV *value, int set, int apply_to_all)
 {
-    if (set) {
-        if (apply_to_all) {
-            filegv_value = value;
-            walk_optree((OP*)cop, cop_filegv_r);
-        }
-        else {
-            CopFILEGV_set(cop, value);
-        }
-    }
+    SET(filegv, CopFILEGV_set(cop, value));
 
     return CopFILEGV(cop);
 }
 
 UV cop_seq(COP *cop, UV value, int set, int apply_to_all)
 {
-    if (set) {
-        if (apply_to_all) {
-            seq_value = value;
-            walk_optree((OP*)cop, cop_seq_r);
-        }
-        else {
-            cop->cop_seq = value;
-        }
-    }
+    SET(seq, cop->cop_seq = value);
 
     return cop->cop_seq;
 }
 
 I32 cop_arybase(COP *cop, I32 value, int set, int apply_to_all)
 {
-        if (set) {
-            if (apply_to_all) {
-                arybase_value = value;
-                walk_optree((OP*)cop, cop_arybase_r);
-            }
-            else {
-                CopARYBASE_set(cop, value);
-            }
-        }
+    SET(arybase, CopARYBASE_set(cop, value));
 
-        return CopARYBASE_get(cop);
+    return CopARYBASE_get(cop);
 }
 
 U16 cop_line(COP *cop, U16 value, int set, int apply_to_all)
 {
     if (set) {
+#ifdef DH_ALLOW_SUB_PARAMETERS
         if (apply_to_all) {
             line_value = value;
             line_base_value = cop_line(cop, 0, 0, 0);
             line_base_file = cop_file(cop, NULL, 0, 0);
             walk_optree((OP*)cop, cop_line_r);
         }
-        else {
+        else
+#endif
             cop->cop_line = value;
-        }
     }
 
     return cop->cop_line;
@@ -252,45 +234,29 @@ U16 cop_line(COP *cop, U16 value, int set, int apply_to_all)
 SV *cop_warnings(COP *cop, SV *value, int set, int apply_to_all)
 {
 #if PERL_REVISION == 5 && (PERL_VERSION >= 10)
-	return &PL_sv_undef;
+    return &PL_sv_undef;
 #else
-        if (set) {
-            if (apply_to_all) {
-                warnings_value = value;
-                walk_optree((OP*)cop, cop_warnings_r);
-            }
-            else {
-                cop->cop_warnings = newSVsv(value);
-            }
-        }
+    SET(warnings, cop->cop_warnings = newSVsv(value));
 
-	if ( PTR2UV(cop->cop_warnings) > 255 ) {
-	    /* pointer to the lexical SV */
-	    return SvREFCNT_inc(cop->cop_warnings);
-	}
-	else {
-	    /* UV of global warnings flags */
-	    return newSVuv( PTR2UV(cop->cop_warnings) );
-	}
+    if ( PTR2UV(cop->cop_warnings) > 255 ) {
+        /* pointer to the lexical SV */
+        return SvREFCNT_inc(cop->cop_warnings);
+    }
+    else {
+        /* UV of global warnings flags */
+        return newSVuv( PTR2UV(cop->cop_warnings) );
+    }
 #endif
 }
 
 SV *cop_io(COP *cop, SV *value, int set, int apply_to_all)
 {
 #if PERL_REVISION == 5 && (PERL_VERSION >= 7 && PERL_VERSION < 10)
-        if (set) {
-            if (apply_to_all) {
-                io_value = value;
-                walk_optree((OP*)cop, cop_io_r);
-            }
-            else {
-                cop->cop_io = newSVsv(value);
-            }
-        }
+    SET(io, cop->cop_io = newSVsv(value));
 
-        return cop->cop_io ? SvREFCNT_inc(cop->cop_io) : newSVpvn("", 0);
+    return cop->cop_io ? SvREFCNT_inc(cop->cop_io) : newSVpvn("", 0);
 #else
-	return &PL_sv_undef;
+    return &PL_sv_undef;
 #endif
 }
 
