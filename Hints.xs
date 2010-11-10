@@ -8,6 +8,12 @@
 #define CopFILEGV_set(c, gv) ;; /* noop */
 #endif
 
+#if PERL_REVISION == 5 && (PERL_VERSION >= 10)
+#define DH_PMOP_STASHSTARTU(o) o->op_pmstashstartu.op_pmreplstart
+#else
+#define DH_PMOP_STASHSTARTU(o) o->op_pmreplstart
+#endif
+
 #define CALL_IMPL(m)                                      \
     if (GIMME_V == G_VOID)                                \
         XSRETURN(0);                                      \
@@ -80,8 +86,7 @@ static void _walk_optree(OP *o, walk_optree_cb_t cb, ptable *visited)
             break;
         case OA_PMOP:
             if (o->op_type == OP_SUBST)
-                _walk_optree(cPMOPo->op_pmstashstartu.op_pmreplstart,
-                             cb, visited);
+                _walk_optree(DH_PMOP_STASHSTARTU(cPMOPo), cb, visited);
             break;
         }
     }
