@@ -37,7 +37,7 @@ Devel::Hints - Access compile-time hints at runtime
 =head1 VERSION
 
 This document describes version 0.21 of Devel::Hints, released
-November 9, 2010.
+November 10, 2010.
 
 =head1 SYNOPSIS
 
