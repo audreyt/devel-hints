@@ -1,3 +1,7 @@
+* Allow modifying hints of arbitrary coderefs, not just stack frames (doy)
+
+* Fix test failures on perl 5.8 (doy)
+
 [Changes for 0.20 - 2005-12-30]
 
 * LICENSING CHANGE: This compilation and all individual files in it

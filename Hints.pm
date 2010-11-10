@@ -83,6 +83,13 @@ Functions can also take another optional argument, which (if specified)
 I<becomes the new value> for the hint, affecting the current statement
 or block's behaviour.
 
+On perl 5.10 or greater, the first argument to these functions can also be a
+coderef. In that case, they return the value for the first statement in the
+coderef's body, and if an argument is passed, they set the value for the entire
+coderef body. C<cop_line> and C<cop_file> are slightly special here - #line
+directives within the coderef will still be respected, and the line will be
+offset by the correct amount within the sub.
+
 =head1 FUNCTIONS
 
 =over 4
