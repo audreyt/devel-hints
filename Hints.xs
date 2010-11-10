@@ -7,6 +7,12 @@
 #ifndef CopFILEGV_set
 #define CopFILEGV_set(c, gv) ;; /* noop */
 #endif
+#ifndef CopARYBASE_get
+#define CopARYBASE_get(c) c->cop_arybase
+#endif
+#ifndef CopARYBASE_set
+#define CopARYBASE_set(c,v) c->cop_arybase = v
+#endif
 
 #if PERL_REVISION == 5 && (PERL_VERSION >= 10)
 #define DH_PMOP_STASHSTARTU(o) o->op_pmstashstartu.op_pmreplstart
@@ -213,21 +219,17 @@ UV cop_seq(COP *cop, UV value, int set, int apply_to_all)
 
 I32 cop_arybase(COP *cop, I32 value, int set, int apply_to_all)
 {
-#ifdef CopARYBASE_get
-	return (I32) CopARYBASE_get(cop);
-#else
         if (set) {
             if (apply_to_all) {
                 arybase_value = value;
                 walk_optree((OP*)cop, cop_arybase_r);
             }
             else {
-                cop->cop_arybase = value;
+                CopARYBASE_set(cop, value);
             }
         }
 
-        return cop->cop_arybase;
-#endif
+        return CopARYBASE_get(cop);
 }
 
 U16 cop_line(COP *cop, U16 value, int set, int apply_to_all)

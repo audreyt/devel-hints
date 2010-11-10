@@ -53,10 +53,8 @@ November 9, 2010.
     print cop_stashpv();    # same as __PACKAGE__
     print cop_stash();	    # same as \%{__PACKAGE__ . '::'}
     print cop_seq();	    # an integer
-    print cop_line();	    # same as __LINE__
-
-    # cop_arybase() is only settable on Perl 5.8 or below
     print cop_arybase();    # same as $[
+    print cop_line();	    # same as __LINE__
 
     # cop_warnings() is only available to Perl 5.8 or below
     use warnings;
