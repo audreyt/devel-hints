@@ -135,7 +135,7 @@ char *cop_label(COP *cop, char *value, int set, int apply_to_all)
     return (char *) CopLABEL(cop);
 #else
     if (set)
-        cop->cop_label = save_pv(value);
+        cop->cop_label = strdup(value);
 
     return cop->cop_label ? cop->cop_label : Nullch;
 #endif
