@@ -49,7 +49,6 @@ sub seq {
 }
 
 sub arybase {
-    if ($] >= 5.010) { SKIP: { skip('cop_arybase not assignable in Perl 5.10+', 2); } return; }
     my @a = (1 .. 10);
     is(cop_arybase(0 => 1), 1, $TopicRV), is($a[1], 1, $Topic);
 }

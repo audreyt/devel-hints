@@ -116,7 +116,6 @@ sub seq {
 }
 
 sub arybase {
-    if ($] >= 5.010) { SKIP: { skip('cop_arybase not assignable in Perl 5.10+', 2); } return; }
     local $SIG{__WARN__} = sub { };
     is(cop_arybase($sub => 1), 1, $TopicRV);
     is(($sub->())[1], 1, $Topic);
