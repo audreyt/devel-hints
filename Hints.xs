@@ -23,7 +23,7 @@
 #define CALL_IMPL(m)                                      \
     if (GIMME_V == G_VOID)                                \
         XSRETURN(0);                                      \
-    RETVAL = cop_ ## m(mycop(code), value, items >= 2, 1)
+    RETVAL = cop_ ## m(mycop(code), value, items >= 2, code && SvROK(code))
 
 #define WALK_OPTREE_CB(m,t)                    \
     static t m ## _value;                      \
