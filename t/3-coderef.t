@@ -61,7 +61,7 @@ is(cop_arybase($sub), 10, 'cop_arybase');
 is(cop_line($sub), $line, 'cop_line');
 
 SKIP: {
-    skip('cop_awarnings() not available', 1) unless defined cop_warnings();
+    skip('cop_warnings() not available', 1) unless defined cop_warnings();
 
     is(cop_warnings($sub), $warning_bits, 'cop_warnings');
 }

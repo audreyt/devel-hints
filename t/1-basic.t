@@ -30,7 +30,7 @@ is(cop_arybase(), 10, 'cop_arybase');
 is(cop_line(), __LINE__, 'cop_line');
 
 SKIP: {
-    skip('cop_awarnings() not available', 3) unless defined cop_warnings();
+    skip('cop_warnings() not available', 3) unless defined cop_warnings();
 
     use warnings;
     is(cop_warnings(0), 16, 'cop_warnings');
