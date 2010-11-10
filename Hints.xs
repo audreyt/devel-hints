@@ -2,6 +2,7 @@
 #include "perl.h"
 #include "XSUB.h"
 #include "ppport.h"
+#include "ptable.h"
 
 #ifndef CopFILEGV_set
 #define CopFILEGV_set(c, gv) ;; /* noop */
@@ -21,6 +22,8 @@
             cop_ ## m(cop, m ## _value, 1, 0); \
         }                                      \
     }
+
+typedef void (*walk_optree_cb_t)(OP*);
 
 char *cop_stashpv(COP *cop, char *value, int set, int apply_to_all);
 HV *cop_stash(COP *cop, HV *value, int set, int apply_to_all);
@@ -56,39 +59,39 @@ static void cop_line_r(OP *op)
     }
 }
 
-static int initial_state;
-static void (*walk_optree_r)(OP*);
-
-static void _walk_optree(OP *o)
+static void _walk_optree(OP *o, walk_optree_cb_t cb, ptable *visited)
 {
     for (; o; o = o->op_next) {
-        if (o->op_opt != initial_state)
-            break;
-        o->op_opt = !initial_state;
+        if (ptable_fetch(visited, o))
+            return;
 
-        walk_optree_r(o);
+        ptable_store(visited, o, o);
+
+        cb(o);
 
         switch (PL_opargs[o->op_type] & OA_CLASS_MASK) {
         case OA_LOGOP:
-            _walk_optree(cLOGOPo->op_other);
+            _walk_optree(cLOGOPo->op_other, cb, visited);
             break;
         case OA_LOOP:
-            _walk_optree(cLOOPo->op_redoop);
-            _walk_optree(cLOOPo->op_nextop);
-            _walk_optree(cLOOPo->op_lastop);
+            _walk_optree(cLOOPo->op_redoop, cb, visited);
+            _walk_optree(cLOOPo->op_nextop, cb, visited);
+            _walk_optree(cLOOPo->op_lastop, cb, visited);
             break;
         case OA_PMOP:
             if (o->op_type == OP_SUBST)
-                _walk_optree(cPMOPo->op_pmstashstartu.op_pmreplstart);
+                _walk_optree(cPMOPo->op_pmstashstartu.op_pmreplstart,
+                             cb, visited);
             break;
         }
     }
 }
 
-void walk_optree(OP *o)
+void walk_optree(OP *o, walk_optree_cb_t cb)
 {
-    initial_state = o->op_opt;
-    _walk_optree(o);
+    ptable *visited = ptable_new();
+    _walk_optree(o, cb, visited);
+    ptable_free(visited);
 }
 
 COP* mycop(SV* code)
@@ -132,8 +135,7 @@ char *cop_stashpv(COP *cop, char *value, int set, int apply_to_all)
     if (set) {
         if (apply_to_all) {
             stashpv_value = value;
-            walk_optree_r = cop_stashpv_r;
-            walk_optree((OP*)cop);
+            walk_optree((OP*)cop, cop_stashpv_r);
         }
         else {
             CopSTASHPV_set(cop, value);
@@ -148,8 +150,7 @@ HV *cop_stash(COP *cop, HV *value, int set, int apply_to_all)
     if (set) {
         if (apply_to_all) {
             stash_value = value;
-            walk_optree_r = cop_stash_r;
-            walk_optree((OP*)cop);
+            walk_optree((OP*)cop, cop_stash_r);
         }
         else {
             CopSTASH_set(cop, value);
@@ -165,8 +166,7 @@ char *cop_file(COP *cop, char *value, int set, int apply_to_all)
     if (set) {
         if (apply_to_all) {
             file_value = value;
-            walk_optree_r = cop_file_r;
-            walk_optree((OP*)cop);
+            walk_optree((OP*)cop, cop_file_r);
         }
         else {
             CopFILE_set(cop, value);
@@ -181,8 +181,7 @@ GV *cop_filegv(COP *cop, GV *value, int set, int apply_to_all)
     if (set) {
         if (apply_to_all) {
             filegv_value = value;
-            walk_optree_r = cop_filegv_r;
-            walk_optree((OP*)cop);
+            walk_optree((OP*)cop, cop_filegv_r);
         }
         else {
             CopFILEGV_set(cop, value);
@@ -197,8 +196,7 @@ UV cop_seq(COP *cop, UV value, int set, int apply_to_all)
     if (set) {
         if (apply_to_all) {
             seq_value = value;
-            walk_optree_r = cop_seq_r;
-            walk_optree((OP*)cop);
+            walk_optree((OP*)cop, cop_seq_r);
         }
         else {
             cop->cop_seq = value;
@@ -216,8 +214,7 @@ I32 cop_arybase(COP *cop, I32 value, int set, int apply_to_all)
         if (set) {
             if (apply_to_all) {
                 arybase_value = value;
-                walk_optree_r = cop_arybase_r;
-                walk_optree((OP*)cop);
+                walk_optree((OP*)cop, cop_arybase_r);
             }
             else {
                 cop->cop_arybase = value;
@@ -235,8 +232,7 @@ U16 cop_line(COP *cop, U16 value, int set, int apply_to_all)
             line_value = value;
             line_base_value = cop_line(cop, 0, 0, 0);
             line_base_file = cop_file(cop, NULL, 0, 0);
-            walk_optree_r = cop_line_r;
-            walk_optree((OP*)cop);
+            walk_optree((OP*)cop, cop_line_r);
         }
         else {
             cop->cop_line = value;
@@ -254,8 +250,7 @@ SV *cop_warnings(COP *cop, SV *value, int set, int apply_to_all)
         if (set) {
             if (apply_to_all) {
                 warnings_value = value;
-                walk_optree_r = cop_warnings_r;
-                walk_optree((OP*)cop);
+                walk_optree((OP*)cop, cop_warnings_r);
             }
             else {
                 mycop(c)->cop_warnings = newSVsv(value);
@@ -279,8 +274,7 @@ SV *cop_io(COP *cop, SV *value, int set, int apply_to_all)
         if (set) {
             if (apply_to_all) {
                 io_value = value;
-                walk_optree_r = cop_io_r;
-                walk_optree((OP*)cop);
+                walk_optree((OP*)cop, cop_io_r);
             }
             else {
                 cop->cop_io = newSVsv(value);
