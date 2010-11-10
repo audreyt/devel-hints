@@ -258,11 +258,11 @@ SV *cop_warnings(COP *cop, SV *value, int set, int apply_to_all)
                 walk_optree((OP*)cop, cop_warnings_r);
             }
             else {
-                mycop(c)->cop_warnings = newSVsv(value);
+                cop->cop_warnings = newSVsv(value);
             }
         }
 
-	if ( PTR2UV(mycop(c)->cop_warnings) > 255 ) {
+	if ( PTR2UV(cop->cop_warnings) > 255 ) {
 	    /* pointer to the lexical SV */
 	    return SvREFCNT_inc(cop->cop_warnings);
 	}
